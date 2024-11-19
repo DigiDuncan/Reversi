@@ -65,7 +65,12 @@ class Board:
         self.tiles[y][x] = value
 
     def reset(self):
-        self.tiles = [[Tile.NONE] * self.size] * self.size
+        self.tiles = []
+        for i in range(self.size):
+            l = []
+            for j in range(self.size):
+                l.append(Tile.NONE)
+            self.tiles.append(l)
         h = self.size // 2
         self.tiles[h-1][h-1] = Tile.WHITE
         self.tiles[h][h] = Tile.WHITE
