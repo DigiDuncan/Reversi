@@ -119,6 +119,8 @@ def interface():
             move = input(f"Player {game.current_turn}, make a move: ")
             try:
                 legal = game.is_move_legal(tile_name_to_coord(move))
+                if not legal:
+                    print("Move is not a legal move.")
             except ValueError as e:
                 print(e.args[0])
                 continue
