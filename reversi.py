@@ -44,10 +44,17 @@ class Board:
     def __init__(self, size: int = 8) -> None:
         self.size = size
         self.tiles: list[list[Tile]] = [[]]
-        self.players: tuple[Player, Player] = (Player(Tile.WHITE), Player(Tile.BLACK))
         self.current_turn = Tile.WHITE
 
         self.reset()
+
+    def get_player_score(self, color: Tile) -> int:
+        s = 0
+        for c in self.tiles:
+            for r in c:
+                if r == color:
+                    s += 1
+        return s
 
     def get_tile_by_name(self, name: str) -> Tile:
         x, y = tile_name_to_coord(name)
@@ -65,19 +72,45 @@ class Board:
         self.tiles[h-1][h] = Tile.BLACK
         self.tiles[h][h-1] = Tile.BLACK
 
-    def is_move_legal(self, player: Player, tile_name: str) -> bool:
+    def is_move_legal(self, tile_name: str) -> bool:
         # Check a 3x3 around the player
         tile_x, tile_y = tile_name_to_coord(tile_name)
         for cy in range(tile_y - 1, tile_y + 2):
             for cx in range(tile_x - 1, tile_x + 2):
                 if 0 >= cy > self.size and 0 >= cx > self.size:  # Ignore OOB
-                    if self.tiles[cy][cx] == player.color.invert():
-                        # Technically this checks out current tile too but it'll never be True so who cards
+                    if self.tiles[cy][cx] == self.current_turn.invert():
+                        # Technically this checks our current tile too but it'll never be True so who cards
                         return True
         return False
 
-    def do_move(self, player: Player, tile_name: str):
-        if self.is_move_legal(self, player, tile_name):
-            raise IllegalMoveException(f"Move {tile_name} illegal for player {player.color.name}.")
-
+    def do_move(self, tile_name: str):
+        if not self.is_move_legal(self, self.current_turn, tile_name):
+            raise IllegalMoveException(f"Move {tile_name} illegal for player {self.current_turn.name}.")
         # ARC :hepme:
+        # Do the move
+        self.current_turn = self.current_turn.invert()
+
+    @property
+    def game_over(self) -> bool:
+        # check if all empty tiles have a legal possible move
+        return False
+
+def interface():
+    game = Board(8)
+    while not game.game_over:
+        legal = False
+        while not legal:
+            move = input(f"Player {game.current_turn}, make a move: ")
+            try:
+                legal = game.is_move_legal(move)
+            except ValueError as e:
+                print(e.args[0])
+                continue
+        game.do_move(move)
+    print(f"Game over! W:{game.get_player_score(Tile.WHITE)} B:{game.get_player_score(Tile.BLACK)}")
+
+def main():
+    interface()
+
+if __name__ == "__main__":
+    main()
