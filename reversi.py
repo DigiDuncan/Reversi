@@ -77,9 +77,9 @@ class Board:
         self.tiles[h-1][h] = Tile.BLACK
         self.tiles[h][h-1] = Tile.BLACK
 
-    def is_move_legal(self, tile_name: str) -> bool:
+    def is_move_legal(self, coord: tuple[int, int]) -> bool:
         # Check a 3x3 around the player
-        tile_x, tile_y = tile_name_to_coord(tile_name)
+        tile_x, tile_y = coord
         for cy in range(tile_y - 1, tile_y + 2):
             for cx in range(tile_x - 1, tile_x + 2):
                 if 0 >= cy > self.size and 0 >= cx > self.size:  # Ignore OOB
@@ -88,17 +88,21 @@ class Board:
                         return True
         return False
 
-    def do_move(self, tile_name: str):
-        if not self.is_move_legal(self, self.current_turn, tile_name):
-            raise IllegalMoveException(f"Move {tile_name} illegal for player {self.current_turn.name}.")
+    def do_move(self, coord: tuple[int, int]):
+        if not self.is_move_legal(self, coord):
+            raise IllegalMoveException(f"Move {coord} illegal for player {self.current_turn.name}.")
         # ARC :hepme:
         # Do the move
         self.current_turn = self.current_turn.invert()
 
     @property
     def game_over(self) -> bool:
-        # check if all empty tiles have a legal possible move
-        return False
+        for i in range(self.size):
+            for j in range(self.size):
+                if self.is_move_legal((i, j)):
+                    return False
+        return True
+
 
     def print(self):
         for y in self.tiles:
@@ -114,7 +118,7 @@ def interface():
         while not legal:
             move = input(f"Player {game.current_turn}, make a move: ")
             try:
-                legal = game.is_move_legal(move)
+                legal = game.is_move_legal(tile_name_to_coord(move))
             except ValueError as e:
                 print(e.args[0])
                 continue
