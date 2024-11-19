@@ -95,9 +95,16 @@ class Board:
         # check if all empty tiles have a legal possible move
         return False
 
+    def print(self):
+        for y in self.tiles:
+            for x in y:
+                print("_" if x == Tile.NONE else "O" if x == Tile.WHITE else "X", end="")
+            print("\n", end="")
+
 def interface():
     game = Board(8)
     while not game.game_over:
+        game.print()
         legal = False
         while not legal:
             move = input(f"Player {game.current_turn}, make a move: ")
