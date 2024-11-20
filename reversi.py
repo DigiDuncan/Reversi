@@ -16,14 +16,14 @@ def tile_name_to_coord(name: str, board_size: int = 8) -> tuple[int, int]:
     
     if l not in name_map:
         raise ValueError(f"Invalid row {l!r}.")
-    y = name_map.index(l)
+    x = name_map.index(l)
 
     try:
-        x = int(n) - 1
+        y = int(n) - 1
     except Exception:
         raise ValueError(f"{n} is not a valid column.")
-    if 0 > x > board_size - 1:
-        raise ValueError(f"{x} is not a valid column (out of range.)")
+    if not (0 <= y < board_size):
+        raise ValueError(f"{y} is not a valid column (out of range.)")
 
     return x, y
 
@@ -33,7 +33,7 @@ class Tile(Enum):
     BLACK = 2
 
     def invert(self) -> Tile:
-        return Tile.NONE if self.name == "NONE" else Tile.BLACK if self.name == "WHITE" else Tile.BLACK
+        return Tile.NONE if self == Tile.NONE else Tile.BLACK if self == self.WHITE else Tile.WHITE
 
 class Player:
     def __init__(self, color: Tile, score: int = 0) -> None:
@@ -43,7 +43,7 @@ class Player:
 class Board:
     def __init__(self, size: int = 8) -> None:
         self.size = size
-        self.tiles: list[list[Tile]] = [[]]
+        self.tiles: list[list[Tile]] = []
         self.current_turn = Tile.WHITE
 
         self.reset()
@@ -65,34 +65,72 @@ class Board:
         self.tiles[y][x] = value
 
     def reset(self):
-        self.tiles = []
-        for i in range(self.size):
-            l = []
-            for j in range(self.size):
-                l.append(Tile.NONE)
-            self.tiles.append(l)
+        self.tiles = [[Tile.NONE] * self.size for _ in range(self.size)]
         h = self.size // 2
         self.tiles[h-1][h-1] = Tile.WHITE
         self.tiles[h][h] = Tile.WHITE
         self.tiles[h-1][h] = Tile.BLACK
         self.tiles[h][h-1] = Tile.BLACK
 
+
+    def get_bookends(self, coord: tuple[int, int]) -> list[list[tuple[int, int]]]:
+        print(coord, self.tiles[coord[0]][coord[1]])
+        if self.tiles[coord[0]][coord[1]] != Tile.NONE:
+            return []
+
+        lines = [[] for _ in range(self.size)]
+        finished = [False] * self.size
+        t_x, t_y = coord
+        tiles = self.tiles
+        tile = self.current_turn
+        op = tile.invert()
+        size = self.size
+        print(tile, op)
+        def bookend(i, x, y):
+            if finished[i]:
+                return
+            
+            if not (0 <= x < size and 0 <= y < size):
+                lines[i] = []
+                finished[i] = True
+                return
+
+            t = tiles[x][y]
+            if t == op:
+                lines[i].append((x, y))
+            elif t == Tile.NONE:
+                # DISCONNECTED
+                lines[i] = []
+                finished[i] = True
+            else:
+                # Bookended
+                finished[i] = True
+
+        for idx in range(1, self.size):
+            bookend(0, t_x - idx, t_y)
+            bookend(1, t_x + idx, t_y)
+            bookend(2, t_x, t_y - idx)
+            bookend(3, t_x, t_y + idx)
+            bookend(4, t_x - idx, t_y - idx)
+            bookend(5, t_x - idx, t_y + idx)
+            bookend(6, t_x + idx, t_y - idx)
+            bookend(7, t_x + idx, t_y + idx)
+        return [l for l in lines if l]
+                
     def is_move_legal(self, coord: tuple[int, int]) -> bool:
-        # Check a 3x3 around the player
-        tile_x, tile_y = coord
-        for cy in range(tile_y - 1, tile_y + 2):
-            for cx in range(tile_x - 1, tile_x + 2):
-                if 0 >= cy > self.size and 0 >= cx > self.size:  # Ignore OOB
-                    if self.tiles[cy][cx] == self.current_turn.invert():
-                        # Technically this checks our current tile too but it'll never be True so who cards
-                        return True
-        return False
+        return not not self.get_bookends(coord)
 
     def do_move(self, coord: tuple[int, int]):
-        if not self.is_move_legal(self, coord):
+        print(coord)
+        lines = self.get_bookends(coord)
+        if not lines:
             raise IllegalMoveException(f"Move {coord} illegal for player {self.current_turn.name}.")
-        # ARC :hepme:
-        # Do the move
+        
+        for line in lines:
+            for tile in line:
+                self.tiles[tile[0]][tile[1]] = self.current_turn
+        self.tiles[coord[0]][coord[1]] = self.current_turn
+
         self.current_turn = self.current_turn.invert()
 
     @property
@@ -103,11 +141,13 @@ class Board:
                     return False
         return True
 
-
     def print(self):
-        for y in self.tiles:
-            for x in y:
-                print("_" if x == Tile.NONE else "O" if x == Tile.WHITE else "X", end="")
+        print(f" {name_map}")
+        for row in range(self.size):
+            print(row+1,end='')
+            for col in range(self.size):
+                y = self.tiles[col][row]
+                print("_" if y == Tile.NONE else "O" if y == Tile.WHITE else "X", end="")
             print("\n", end="")
 
 def interface():
@@ -117,14 +157,15 @@ def interface():
         legal = False
         while not legal:
             move = input(f"Player {game.current_turn}, make a move: ")
+            coord = tile_name_to_coord(move)
             try:
-                legal = game.is_move_legal(tile_name_to_coord(move))
+                legal = game.is_move_legal(coord)
                 if not legal:
-                    print("Move is not a legal move.")
+                    print(f"{move} is not a legal move.")
             except ValueError as e:
                 print(e.args[0])
                 continue
-        game.do_move(move)
+        game.do_move(coord)
     print(f"Game over! W:{game.get_player_score(Tile.WHITE)} B:{game.get_player_score(Tile.BLACK)}")
 
 def main():
