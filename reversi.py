@@ -74,7 +74,6 @@ class Board:
 
 
     def get_bookends(self, coord: tuple[int, int]) -> list[list[tuple[int, int]]]:
-        print(coord, self.tiles[coord[0]][coord[1]])
         if self.tiles[coord[0]][coord[1]] != Tile.NONE:
             return []
 
@@ -85,7 +84,6 @@ class Board:
         tile = self.current_turn
         op = tile.invert()
         size = self.size
-        print(tile, op)
         def bookend(i, x, y):
             if finished[i]:
                 return
@@ -121,7 +119,6 @@ class Board:
         return not not self.get_bookends(coord)
 
     def do_move(self, coord: tuple[int, int]):
-        print(coord)
         lines = self.get_bookends(coord)
         if not lines:
             raise IllegalMoveException(f"Move {coord} illegal for player {self.current_turn.name}.")
