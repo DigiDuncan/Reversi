@@ -25,7 +25,7 @@ class OrthelloAI:
         if self.chaos < random():
             # The AI has locked in
             coord = ranked[0]
-            return `coord, moves[coord]
+            return coord, moves[coord]
     
         cap = max(1, int((1.0 - self.pickyness) * len(ranked)))
         picks = ranked[:cap]
