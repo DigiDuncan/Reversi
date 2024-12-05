@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 from copy import copy, deepcopy
+from random import choices
 
 name_map = "ABCDEFGH"
 
@@ -14,27 +15,6 @@ class Tile(Enum):
 
 class IllegalMoveException(Exception):
     ...
-
-def tile_name_to_coord(name: str, board_size: int = 8) -> tuple[int, int]:
-    # Quick and dirty validation
-    if len(name) != 2:
-        raise ValueError(f"Invalid tile name {name!r}.")
-    
-    # Split string into two
-    l, n = name[0].upper(), name[1]
-    
-    if l not in name_map:
-        raise ValueError(f"Invalid row {l!r}.")
-    x = name_map.index(l)
-
-    try:
-        y = int(n) - 1
-    except Exception:
-        raise ValueError(f"{n} is not a valid column.")
-    if not (0 <= y < board_size):
-        raise ValueError(f"{y} is not a valid column (out of range.)")
-
-    return x, y
 
 class StaticBoard:
 
@@ -115,7 +95,7 @@ class StaticBoard:
                 # Bookended
                 finished[i] = True
 
-        for idx in range(1, self.size):
+        for idx in range(1, self.size+1):
             bookend(0, t_x - idx, t_y)
             bookend(1, t_x + idx, t_y)
             bookend(2, t_x, t_y - idx)
@@ -129,12 +109,13 @@ class StaticBoard:
     def get_available_moves(self, tile: Tile):
         open_tiles = ((col, row) for row in range(self.size) for col in range(self.size) if self.tiles[col][row] == Tile.NONE)
         bookends = ((coord, self.get_bookends(coord, tile)) for coord in open_tiles)
-        return {c: b for c, b in bookends if b}
+        return {p[0]: p[1] for p in bookends if p[1]}
 
 def evaluation(board: StaticBoard, tile: Tile):
     moves = board.get_available_moves(tile)
     if not moves:
         raise IllegalMoveException(f'{tile.name} cannot make a move')
-    evaluations = {coord: sum(len(bookend) for bookend in move) for coord, move in moves.items()}
-    best = max((e, c) for c, e in evaluations.items())[1]
+    evaluations = ((coord, sum(len(bookend) for bookend in move)) for coord, move in moves.items())
+    coords, weights = zip(*evaluations)
+    best = choices(tuple(coords), weights=tuple(weights))[0]
     return best

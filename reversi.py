@@ -1,12 +1,10 @@
 from __future__ import annotations
 from enum import Enum
 
-from board import evaluation, StaticBoard, Tile
+from board import evaluation, StaticBoard, Tile, IllegalMoveException
 
 name_map = "ABCDEFGH"
 
-class IllegalMoveException(Exception):
-    ...
 
 def tile_name_to_coord(name: str, board_size: int = 8) -> tuple[int, int]:
     # Quick and dirty validation
@@ -28,6 +26,9 @@ def tile_name_to_coord(name: str, board_size: int = 8) -> tuple[int, int]:
         raise ValueError(f"{y} is not a valid column (out of range.)")
 
     return x, y
+
+def coord_to_tile_name(coord) -> str:
+    return f"{name_map[coord[0]]}{coord[1]+1}"
 
 class Player:
     def __init__(self, color: Tile, score: int = 0) -> None:
@@ -98,7 +99,7 @@ class Board:
                 # Bookended
                 finished[i] = True
 
-        for idx in range(1, self.size):
+        for idx in range(1, self.size+1):
             bookend(0, t_x - idx, t_y)
             bookend(1, t_x + idx, t_y)
             bookend(2, t_x, t_y - idx)
@@ -141,19 +142,23 @@ class Board:
                 print("_" if y == Tile.NONE else "O" if y == Tile.WHITE else "X", end="")
             print("\n", end="")
 
-def interface(player: Tile = Tile.WHITE):
+def interface(ai: Tile = Tile.BLACK):
     game = Board(8)
     while not game.game_over:
         game.print()
         legal = False
         while not legal:
-            if game.current_turn == player:
-                move = input(f"Player <{game.current_turn.name}>, make a move: ")
-                coord = tile_name_to_coord(move)
-            else:
-                print(f'AI <{game.current_turn.name}>, making a move.')
+            if game.current_turn == ai or True:
                 coord = evaluation(StaticBoard.from_data(game.size, game.tiles), game.current_turn)
-                print(coord)
+                move = coord_to_tile_name(coord)
+                print(f'AI <{game.current_turn.name}>, making a move: {move}')
+            else:
+                move = input(f"Player <{game.current_turn.name}>, make a move: ")
+                try:
+                    coord = tile_name_to_coord(move)
+                except ValueError:
+                    print(f"{move} is not a valid move.")
+                    continue
             try:
                 legal = game.is_move_legal(coord)
                 if not legal:
