@@ -25,13 +25,13 @@ class OrthelloAI:
         if self.chaos < random():
             # The AI has locked in
             coord = ranked[0]
-            return ranked, moves[ranked]
+            return `coord, moves[coord]
     
         cap = max(1, int((1.0 - self.pickyness) * len(ranked)))
         picks = ranked[:cap]
         offset = min(evaluations.values())
 
-        pick = choices(picks, [evaluations[tile] - offset + 1 for tile in picks], self.depth)[0]
+        pick = choices(picks, [evaluations[tile] - offset + 1 for tile in picks])[0]
         return pick, moves[pick]
 
     def search(self, board: Board, turn: Tile, alpha: float, beta: float, depth: int = 0) -> float:
@@ -125,5 +125,5 @@ random_weights = (
 # --- AI ----
 GOBLIN = OrthelloAI(0.0, 1.0, 0, random_weights) # Randomly chooses a move
 NOVICE = OrthelloAI(0.0, 1.0, 0, plain_weights) # More likely to pick a move gives them more pieces
-INTERMEDIATE = OrthelloAI(0.4, 0.9, radial_weights) # Prioritises the outer edge over the center, but doesn't have the best weighting
-MASTER = OrthelloAI(1.0, 0.0, 3, peak_weights) # Uses the best weight table, and looks 3 moves into the future
+INTERMEDIATE = OrthelloAI(0.4, 0.9, 0, radial_weights) # Prioritises the outer edge over the center, but doesn't have the best weighting
+MASTER = OrthelloAI(1.0, 0.0, 2, peak_weights) # Uses the best weight table, and looks 3 moves into the future

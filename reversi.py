@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from board import Board, Tile
-from ai import OrthelloAI, GOBLIN
+from ai import OrthelloAI, MASTER
 
 name_map = "ABCDEFGH"
 
@@ -63,7 +63,7 @@ def play(white_ai: OrthelloAI = None, black_ai: OrthelloAI = None, size: int = 8
 
 
 def main():
-    play(None, GOBLIN)
+    play(None, MASTER)
 
 if __name__ == "__main__":
     main()
