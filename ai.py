@@ -1,10 +1,10 @@
-from random import choices, random
+from random import choices, choice, random
 
-from board import StaticBoard, Tile, IllegalMoveException
+from board import Board, Tile, IllegalMoveException
 
 type WeightTable = tuple[tuple[float, ...], ...]
 
-class PlayerAI:
+class OrthelloAI:
 
     def __init__(self, pickyness: float, chaos: float, depth: int, weights: WeightTable):
         self.pickyness: float = pickyness
@@ -12,41 +12,77 @@ class PlayerAI:
         self.depth: int = depth
         self.weights: WeightTable = weights
 
-    def search(self, board: StaticBoard, tile: Tile, depth: int = 0):
-        if depth == self.depth:
-            return self.evaulate()
+    def pick_move(self, board: Board, turn: Tile) -> tuple[tuple[int, int], list[list[tuple[int, int]]]]:
+        moves = board.get_available_moves(turn)
+        # We assume that the interface will call a game before we get to pick a move
 
-        
+        # Evaluate every possible move
+        evaluations = {}
+        for coord, move in moves.items():
+            evaluations[coord] = self.search(board.update(turn, coord, move), turn.invert, -100000, 100000)
 
-    def evaluate(self, board: StaticBoard, tile: Tile, depth: int = 0) -> tuple[tuple[int, int], float]:
-        def score_bookend(coord, bookend):
-            score = self.weights[coord[0]][coord[1]]
-            for line in bookend:
-                for spot in line:
-                    score += self.weights[spot[0]][spot[1]]
-            return score
-    
-        moves = board.get_available_moves(tile)    
-        evaluations = ((coord, score_bookend(coord, move)) for coord, move in moves.items())
-        ranked = sorted(evaluations, key=lambda e: e[1], reverse=True)
+        ranked = sorted(moves.keys(), key=lambda c: evaluations[c], reverse=True)
         if self.chaos < random():
-            return ranked[0][0] 
+            # The AI has locked in
+            coord = ranked[0]
+            return ranked, moves[ranked]
+    
+        cap = max(1, int((1.0 - self.pickyness) * len(ranked)))
+        picks = ranked[:cap]
+        weights = [evaluations[tile] for tile in picks]
+        if not sum(weights):
+            pick = choice(picks)
+        else:
+            offset = min(weights)
+            pick = choices(picks, [weight - offset + 1 for weight in weights])[0]
+        return pick, moves[pick]
 
-        allowed = max(1, int(len(ranked) * self.pickyness))
-        coords, weights = zip(*ranked[:allowed])
-        choice = choices(coords, weights)[0]
-        return choice
+    def search(self, board: Board, turn: Tile, alpha: float, beta: float, depth: int = 0) -> float:
+        if depth == self.depth:
+            return self.evaluate(board, turn)
+        
+        moves = board.get_available_moves(turn)
+        if not moves:
+            a, b = board.get_counts
+            if turn == Tile.BLACK:
+                a, b = b, a
+            if a < b:
+                return -20000 # loses
+            elif b < a:
+                return 20000 # Wins
+            else: 
+                 return 0
+        
+        for coord, move in moves.items():
+            new = board.update(turn, coord, move)
+            result = -self.search(new, turn.invert(), -beta, -alpha, depth+1)
+            if result >= beta:
+                # The move is too good so let's prune it
+                return beta
+            alpha = max(result, alpha)
 
-def evaluation(board: StaticBoard, tile: Tile):
-    moves = board.get_available_moves(tile)
-    if not moves:
-        raise IllegalMoveException(f'{tile.name} cannot make a move')
-    evaluations = ((coord, sum(len(bookend) for bookend in move)) for coord, move in moves.items())
-    coords, weights = zip(*evaluations)
-    best = choices(tuple(coords), weights=tuple(weights))[0]
-    return best
+        return alpha
 
-peak = (
+    def evaluate(self, board: Board, turn: Tile) -> float:
+        tiles = board.tiles
+        weights = self.weights
+
+        white_score = 0
+        black_score = 0
+
+        for col in range(board.size):
+            for row in range(board.size):
+                t = tiles[col][row]
+                if t == Tile.WHITE:
+                    white_score += weights[col][row]
+                elif t == Tile.BLACK:
+                    black_score += weights[col][row]
+
+        perspective = 1 if turn == Tile.WHITE else -1
+        return (white_score - black_score) * perspective
+    
+
+peak_weights = (
     (10000, -3000, 1000, 800, 800, 1000, -3000, 10000),
     (-3000, -5000, -450, -500, -500, -450, -5000, -3000),
     (1000, -450, 30, 10, 10, 30, -450, 1000),
@@ -56,3 +92,39 @@ peak = (
     (-3000, -5000, -450, -500, -500, -450, -5000, -3000),
     (10000, -3000, 1000, 800, 800, 1000, -3000, 10000)
 )
+
+radial_weights = (
+    (10, 5, 5, 5, 5, 5, 5, 10),
+    (5,  3, 3, 3, 3, 3, 3, 5),
+    (5,  3, 1, 1, 1, 1, 3, 5),
+    (5,  3, 1, 0, 0, 1, 3, 5),
+    (5,  3, 1, 0, 0, 1, 3, 5),
+    (5,  3, 1, 1, 1, 1, 3, 5),
+    (5,  3, 3, 3, 3, 3, 3, 5),
+    (10, 5, 5, 5, 5, 5, 5, 10)
+)
+
+plain_weights = (
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1),
+    (1, 1, 1, 1, 1, 1, 1, 1)
+)
+
+random_weights = (
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 0, 0)
+)
+
+# --- AI ----
+GOBLIN = OrthelloAI(0.0, 1.0, 0, random_weights)

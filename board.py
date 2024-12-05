@@ -16,17 +16,23 @@ class Tile(Enum):
 class IllegalMoveException(Exception):
     ...
 
-class StaticBoard:
+class Board:
 
     def __init__(self, size: int = 8):
         self.size: int = size
-        self.tiles: list[list[Tile]] = []
+        self.tiles: list[list[Tile]] = [[Tile.NONE] * size for _ in range(size)]
+
+        h = size // 2
+        self.tiles[h-1][h-1] = Tile.WHITE
+        self.tiles[h][h] = Tile.WHITE
+        self.tiles[h-1][h] = Tile.BLACK
+        self.tiles[h][h-1] = Tile.BLACK
 
     def __deepcopy__(self):
         return self.__copy__()
     
     def __copy__(self):
-        new = StaticBoard(self.size)
+        new = Board(self.size)
         new.tiles = deepcopy(self.tiles)
         return new
     
@@ -59,10 +65,10 @@ class StaticBoard:
 
     def update(self, tile: Tile, coord: tuple[int, int], bookends: list[list[tuple[int, int]]] = []) -> Board:
         new = copy(self)
-        new[coord[0]][coord[1]] = tile
+        new.tiles[coord[0]][coord[1]] = tile
         for line in bookends:
             for flip in line:
-                new[flip[0]][flip[1]] = tile
+                new.tiles[flip[0]][flip[1]] = tile
         return new
     
     def get_bookends(self, coord: tuple[int, int], tile: Tile) -> list[list[tuple[int, int]]]:
@@ -106,16 +112,27 @@ class StaticBoard:
             bookend(7, t_x + idx, t_y + idx)
         return [l for l in lines if l]
 
-    def get_available_moves(self, tile: Tile):
+    def get_available_moves(self, turn: Tile):
         open_tiles = ((col, row) for row in range(self.size) for col in range(self.size) if self.tiles[col][row] == Tile.NONE)
-        bookends = ((coord, self.get_bookends(coord, tile)) for coord in open_tiles)
+        bookends = ((coord, self.get_bookends(coord, turn)) for coord in open_tiles)
         return {p[0]: p[1] for p in bookends if p[1]}
-
-def evaluation(board: StaticBoard, tile: Tile):
-    moves = board.get_available_moves(tile)
-    if not moves:
-        raise IllegalMoveException(f'{tile.name} cannot make a move')
-    evaluations = ((coord, sum(len(bookend) for bookend in move)) for coord, move in moves.items())
-    coords, weights = zip(*evaluations)
-    best = choices(tuple(coords), weights=tuple(weights))[0]
-    return best
+    
+    def get_counts(self):
+        w = 0
+        b = 0
+        tiles = self.tiles
+        for row in range(self.size):
+            for col in range(self.size):
+                t = tiles[col][row]
+                if t == Tile.WHITE:
+                    w += 1
+                elif t == Tile.BLACK:
+                    b += 1
+        return w, b
+    
+    def is_game_over(self, turn: Tile):
+        for i in range(self.size):
+            for j in range(self.size):
+                if self.get_bookends((i, j), turn):
+                    return False
+        return True
