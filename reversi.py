@@ -1,6 +1,8 @@
 from __future__ import annotations
 from enum import Enum
 
+from board import evaluation, StaticBoard, Tile
+
 name_map = "ABCDEFGH"
 
 class IllegalMoveException(Exception):
@@ -26,14 +28,6 @@ def tile_name_to_coord(name: str, board_size: int = 8) -> tuple[int, int]:
         raise ValueError(f"{y} is not a valid column (out of range.)")
 
     return x, y
-
-class Tile(Enum):
-    NONE = 0
-    WHITE = 1
-    BLACK = 2
-
-    def invert(self) -> Tile:
-        return Tile.NONE if self == Tile.NONE else Tile.BLACK if self == self.WHITE else Tile.WHITE
 
 class Player:
     def __init__(self, color: Tile, score: int = 0) -> None:
@@ -147,14 +141,19 @@ class Board:
                 print("_" if y == Tile.NONE else "O" if y == Tile.WHITE else "X", end="")
             print("\n", end="")
 
-def interface():
+def interface(player: Tile = Tile.WHITE):
     game = Board(8)
     while not game.game_over:
         game.print()
         legal = False
         while not legal:
-            move = input(f"Player {game.current_turn}, make a move: ")
-            coord = tile_name_to_coord(move)
+            if game.current_turn == player:
+                move = input(f"Player <{game.current_turn.name}>, make a move: ")
+                coord = tile_name_to_coord(move)
+            else:
+                print(f'AI <{game.current_turn.name}>, making a move.')
+                coord = evaluation(StaticBoard.from_data(game.size, game.tiles), game.current_turn)
+                print(coord)
             try:
                 legal = game.is_move_legal(coord)
                 if not legal:
