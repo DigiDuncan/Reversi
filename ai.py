@@ -29,16 +29,13 @@ class OrthelloAI:
     
         cap = max(1, int((1.0 - self.pickyness) * len(ranked)))
         picks = ranked[:cap]
-        weights = [evaluations[tile] for tile in picks]
-        if not sum(weights):
-            pick = choice(picks)
-        else:
-            offset = min(weights)
-            pick = choices(picks, [weight - offset + 1 for weight in weights])[0]
+        offset = min(evaluations.values())
+
+        pick = choices(picks, [evaluations[tile] - offset + 1 for tile in picks], self.depth)[0]
         return pick, moves[pick]
 
     def search(self, board: Board, turn: Tile, alpha: float, beta: float, depth: int = 0) -> float:
-        if depth == self.depth:
+        if depth == 0:
             return self.evaluate(board, turn)
         
         moves = board.get_available_moves(turn)
@@ -55,7 +52,7 @@ class OrthelloAI:
         
         for coord, move in moves.items():
             new = board.update(turn, coord, move)
-            result = -self.search(new, turn.invert(), -beta, -alpha, depth+1)
+            result = -self.search(new, turn.invert(), -beta, -alpha, depth-1)
             if result >= beta:
                 # The move is too good so let's prune it
                 return beta
@@ -80,7 +77,6 @@ class OrthelloAI:
 
         perspective = 1 if turn == Tile.WHITE else -1
         return (white_score - black_score) * perspective
-    
 
 peak_weights = (
     (10000, -3000, 1000, 800, 800, 1000, -3000, 10000),
@@ -127,4 +123,7 @@ random_weights = (
 )
 
 # --- AI ----
-GOBLIN = OrthelloAI(0.0, 1.0, 0, random_weights)
+GOBLIN = OrthelloAI(0.0, 1.0, 0, random_weights) # Randomly chooses a move
+NOVICE = OrthelloAI(0.0, 1.0, 0, plain_weights) # More likely to pick a move gives them more pieces
+INTERMEDIATE = OrthelloAI(0.4, 0.9, radial_weights) # Prioritises the outer edge over the center, but doesn't have the best weighting
+MASTER = OrthelloAI(1.0, 0.0, 3, peak_weights) # Uses the best weight table, and looks 3 moves into the future
