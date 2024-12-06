@@ -126,4 +126,5 @@ random_weights = (
 GOBLIN = OrthelloAI(0.0, 1.0, 0, random_weights) # Randomly chooses a move
 NOVICE = OrthelloAI(0.0, 1.0, 0, plain_weights) # More likely to pick a move gives them more pieces
 INTERMEDIATE = OrthelloAI(0.4, 0.9, 0, radial_weights) # Prioritises the outer edge over the center, but doesn't have the best weighting
-MASTER = OrthelloAI(1.0, 0.0, 2, peak_weights) # Uses the best weight table, and looks 3 moves into the future
+MASTER = OrthelloAI(1.0, 0.0, 3, peak_weights) # Uses the best weight table, and looks 3 moves into the future
+GENIUS = OrthelloAI(1.0, 0.0, 60, peak_weights)

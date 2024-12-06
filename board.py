@@ -1,7 +1,6 @@
 from __future__ import annotations
 from enum import Enum
 from copy import copy, deepcopy
-from random import choices
 
 name_map = "ABCDEFGH"
 
